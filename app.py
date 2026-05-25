@@ -5,6 +5,7 @@ from google.oauth2.service_account import Credentials
 import re
 from datetime import date, datetime
 
+# Configuração da página limpa e profissional
 st.set_page_config(
     page_title="Take The Vision",
     page_icon="👁",
@@ -33,6 +34,7 @@ def get_sheet():
     spreadsheet = client.open(st.secrets["google_sheets"]["sheet_name"])
     ws = spreadsheet.sheet1
 
+    # Garante cabeçalho na primeira vez se a planilha estiver vazia
     if ws.row_count == 0 or ws.cell(1, 1).value != "id":
         ws.clear()
         ws.append_row(COLUNAS)
@@ -161,27 +163,32 @@ with tab1:
                     st.error(f"Erro ao salvar: {e}")
 
 # ══════════════════════════════════════════════════════════
-# TAB 2 — LISTA DE CLIENTES CADASTRADOS (BUSCA ATUALIZADA)
+# TAB 2 — LISTA DE CLIENTES CADASTRADOS
 # ══════════════════════════════════════════════════════════
 with tab2:
-    # Topo da seção de busca com botão de sincronização alinhado
-    c_title, c_refresh = st.columns([4, 1])
-    with c_title:
+    # Topo da seção com título e botão de atualizar lado a lado
+    col_title, col_refresh = st.columns([4, 1])
+    with col_title:
         st.write("### Consultar Clientes")
-    with c_refresh:
+    with col_refresh:
         if st.button("↺ Atualizar", use_container_width=True):
             st.cache_resource.clear()
             st.rerun()
 
+    # Carrega os dados vindos do Google Sheets
     data = load_data()
     
+    # Campo de busca fixo que agora fica sempre visível no topo da aba
+    busca_nome = st.text_input(
+        "🔍 Buscar cliente por nome", 
+        placeholder="Digite o nome completo ou parte dele para filtrar..."
+    )
+    
+    # Fluxo de verificação de dados e filtragem
     if not data:
-        st.info("Nenhum cliente cadastrado até o momento.")
+        st.info("Nenhum cliente cadastrado na base de dados geral.")
     else:
-        # Modificação solicitada: Campo focado estritamente na busca por nome
-        busca_nome = st.text_input("🔍 Buscar cliente por nome", placeholder="Digite o nome completo ou parte dele...")
-        
-        # Mapeamento e renomeação de colunas do DataFrame
+        # Cria o DataFrame e padroniza as colunas de visualização
         df = pd.DataFrame(data).rename(columns={
             "nome": "Nome", "cpf": "CPF", "telefone": "Telefone", "email": "E-mail",
             "nascimento": "Nascimento", "endereco": "Endereço",
@@ -189,27 +196,31 @@ with tab2:
             "adicao": "Adição", "tipo_lente": "Lente", "criado_em": "Cadastrado em",
         })
         
-        # Aplicação do filtro por nome
+        # Filtra por nome caso o usuário digite algo no campo
         if busca_nome:
             df = df[df["Nome"].str.contains(busca_nome, case=False, na=False)]
             
-        # Ordena os clientes em ordem alfabética para facilitar a leitura
+        # Ordena alfabeticamente os clientes da lista
         df = df.sort_values(by="Nome")
         
-        st.caption(f"Exibindo {len(df)} cliente(s)")
-        
-        # Exibição otimizada na tabela
-        st.dataframe(
-            df[["Nome", "CPF", "Telefone", "E-mail", "Nascimento",
-                "Esf. OD", "Esf. OE", "Cil. OD", "Cil. OE", "Adição", "Lente", "Cadastrado em"]],
-            use_container_width=True, 
-            hide_index=True,
-        )
-        
-        # Ações secundárias agrupadas abaixo da tabela
-        st.download_button(
-            "⬇ Exportar Planilha (CSV)",
-            df.to_csv(index=False).encode("utf-8"),
-            "clientes_take_the_vision.csv", 
-            "text/csv",
-        )
+        # Exibe os resultados filtrados ou gera alerta caso a busca não retorne nada
+        if df.empty:
+            st.warning(f"Nenhum cliente encontrado com o nome '{busca_nome}'.")
+        else:
+            st.caption(f"Exibindo {len(df)} cliente(s)")
+            
+            # Tabela nativa interativa do Streamlit
+            st.dataframe(
+                df[["Nome", "CPF", "Telefone", "E-mail", "Nascimento",
+                    "Esf. OD", "Esf. OE", "Cil. OD", "Cil. OE", "Adição", "Lente", "Cadastrado em"]],
+                use_container_width=True, 
+                hide_index=True,
+            )
+            
+            # Exporta em CSV apenas o que estiver filtrado na tela
+            st.download_button(
+                "⬇ Exportar Planilha (CSV)",
+                df.to_csv(index=False).encode("utf-8"),
+                "clientes_take_the_vision.csv", 
+                "text/csv",
+            )
