@@ -11,7 +11,7 @@ st.set_page_config(
     layout="centered",
 )
 
-# ── Google Sheets Connection 
+# ── Google Sheets Connection ───────────────────────────────────────────────────
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
@@ -33,7 +33,6 @@ def get_sheet():
     spreadsheet = client.open(st.secrets["google_sheets"]["sheet_name"])
     ws = spreadsheet.sheet1
 
-    # Garante cabeçalho na primeira vez se a planilha estiver vazia
     if ws.row_count == 0 or ws.cell(1, 1).value != "id":
         ws.clear()
         ws.append_row(COLUNAS)
@@ -123,7 +122,6 @@ with tab1:
                 "Occupacional", "Lente de Contato", "Outro"
             ])
 
-        # Botão de envio do formulário
         ok = st.form_submit_button("Salvar Cadastro")
 
     if ok:
@@ -157,24 +155,33 @@ with tab1:
                         "criado_em":  datetime.now().strftime("%d/%m/%Y %H:%M"),
                     }
                     save_row(reg)
-                    st.cache_resource.clear()   # Limpa o cache para atualizar a tabela
+                    st.cache_resource.clear()   
                     st.success(f"✓ {nome} cadastrado com sucesso!")
                 except Exception as e:
                     st.error(f"Erro ao salvar: {e}")
 
 # ══════════════════════════════════════════════════════════
-# TAB 2 — LISTA DE CLIENTES CADASTRADOS
+# TAB 2 — LISTA DE CLIENTES CADASTRADOS (BUSCA ATUALIZADA)
 # ══════════════════════════════════════════════════════════
 with tab2:
-    if st.button("↺ Atualizar Lista"):
-        st.cache_resource.clear()
+    # Topo da seção de busca com botão de sincronização alinhado
+    c_title, c_refresh = st.columns([4, 1])
+    with c_title:
+        st.write("### Consultar Clientes")
+    with c_refresh:
+        if st.button("↺ Atualizar", use_container_width=True):
+            st.cache_resource.clear()
+            st.rerun()
 
     data = load_data()
+    
     if not data:
         st.info("Nenhum cliente cadastrado até o momento.")
     else:
-        busca = st.text_input("Buscar por nome ou CPF", placeholder="Digite para filtrar...")
+        # Modificação solicitada: Campo focado estritamente na busca por nome
+        busca_nome = st.text_input("🔍 Buscar cliente por nome", placeholder="Digite o nome completo ou parte dele...")
         
+        # Mapeamento e renomeação de colunas do DataFrame
         df = pd.DataFrame(data).rename(columns={
             "nome": "Nome", "cpf": "CPF", "telefone": "Telefone", "email": "E-mail",
             "nascimento": "Nascimento", "endereco": "Endereço",
@@ -182,15 +189,16 @@ with tab2:
             "adicao": "Adição", "tipo_lente": "Lente", "criado_em": "Cadastrado em",
         })
         
-        if busca:
-            df = df[
-                df["Nome"].str.contains(busca, case=False, na=False) |
-                df["CPF"].str.contains(busca, case=False, na=False)
-            ]
+        # Aplicação do filtro por nome
+        if busca_nome:
+            df = df[df["Nome"].str.contains(busca_nome, case=False, na=False)]
             
+        # Ordena os clientes em ordem alfabética para facilitar a leitura
+        df = df.sort_values(by="Nome")
+        
         st.caption(f"Exibindo {len(df)} cliente(s)")
         
-        # Exibição da tabela usando a nova estrutura do Streamlit
+        # Exibição otimizada na tabela
         st.dataframe(
             df[["Nome", "CPF", "Telefone", "E-mail", "Nascimento",
                 "Esf. OD", "Esf. OE", "Cil. OD", "Cil. OE", "Adição", "Lente", "Cadastrado em"]],
@@ -198,6 +206,7 @@ with tab2:
             hide_index=True,
         )
         
+        # Ações secundárias agrupadas abaixo da tabela
         st.download_button(
             "⬇ Exportar Planilha (CSV)",
             df.to_csv(index=False).encode("utf-8"),
