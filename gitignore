@@ -1,0 +1,19 @@
+# ── Secrets (NUNCA subir para o GitHub) ──────────────────────────
+.streamlit/secrets.toml
+*.json
+credentials*.toml
+
+# ── Dados locais (fallback de desenvolvimento) ────────────────────
+clientes.json
+
+# ── Python ───────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# ── Sistema ──────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
