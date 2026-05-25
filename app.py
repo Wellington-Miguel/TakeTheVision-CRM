@@ -5,14 +5,13 @@ from google.oauth2.service_account import Credentials
 import re
 from datetime import date, datetime
 
-# Configuração da página limpa e profissional
 st.set_page_config(
     page_title="Take The Vision",
     page_icon="👁",
     layout="centered",
 )
 
-# ── Google Sheets Connection ───────────────────────────────────────────────────
+# ── Google Sheets Connection 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
@@ -71,8 +70,8 @@ def valid_email(e):
 
 # ── Cabeçalho Clean ────────────────────────────────────────────────────────────
 st.title("👁 TAKE THE VISION")
-st.subheader("Gestão de Clientes & Receitas")
-st.caption("Armazenamento seguro integrado ao Google Sheets")
+st.subheader("Gestão de Clientes")
+st.caption("Armazenamento seguro")
 
 # ── Abas de Navegação ──────────────────────────────────────────────────────────
 tab1, tab2 = st.tabs(["Novo Cadastro", "Lista de Clientes"])
