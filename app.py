@@ -12,14 +12,20 @@ st.set_page_config(
     layout="wide",
 )
 
-# Padding lateral — ocupa bem a tela sem perder legibilidade
+# CSS: login centralizado, painel com padding controlado
 st.markdown("""
     <style>
+        /* Padrão para o painel autenticado */
         .block-container {
             max-width: 1200px;
             padding-left: 3rem;
             padding-right: 3rem;
             margin: auto;
+        }
+        /* Classe aplicada na tela de login para centralizar */
+        .login-wrap {
+            max-width: 420px;
+            margin: 8vh auto 0 auto;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -39,19 +45,23 @@ def check_password():
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        st.markdown('<div class="hero-wrap"><h1 class="hero-title">TAKE THE VISION</h1></div>', unsafe_allow_html=True)
+        st.markdown('<div class="login-wrap">', unsafe_allow_html=True)
+        st.title("👁 TAKE THE VISION")
         st.subheader("Acesso Restrito")
         st.text_input("Usuário", key="username")
         st.text_input("Senha", type="password", key="password")
         st.button("Entrar", on_click=password_entered)
+        st.markdown('</div>', unsafe_allow_html=True)
         return False
     elif not st.session_state["password_correct"]:
-        st.markdown('<div class="hero-wrap"><h1 class="hero-title">TAKE THE VISION</h1></div>', unsafe_allow_html=True)
+        st.markdown('<div class="login-wrap">', unsafe_allow_html=True)
+        st.title("👁 TAKE THE VISION")
         st.subheader("Acesso Restrito")
-        st.text_input("Utilizador", key="username")
+        st.text_input("Usuário", key="username")
         st.text_input("Senha", type="password", key="password")
         st.button("Entrar", on_click=password_entered)
         st.error("❌ Usuário ou senha incorretos.")
+        st.markdown('</div>', unsafe_allow_html=True)
         return False
     else:
         return True
