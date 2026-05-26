@@ -27,7 +27,6 @@ COLUNAS = [
 
 @st.cache_resource(ttl=300)
 def get_sheet():
-    """Retorna a worksheet do Google Sheets usando cache de 5 min."""
     creds = Credentials.from_service_account_info(
         st.secrets["gcp_service_account"],
         scopes=SCOPES,
@@ -35,11 +34,20 @@ def get_sheet():
     client = gspread.authorize(creds)
     spreadsheet = client.open(st.secrets["google_sheets"]["sheet_name"])
     ws = spreadsheet.sheet1
-
-    # Garante cabeçalho atualizado se a planilha estiver vazia ou desatualizada
-    if ws.row_count == 0 or ws.cell(1, 1).value != "id":
-        ws.clear()
-        ws.append_row(COLUNAS)
+    
+    # Lê a primeira linha real da planilha
+    primeira_linha = ws.row_values(1) if ws.row_count > 0 else []
+    
+    # Se a planilha estiver vazia OU o número de colunas for diferente do código,
+    # reescreve a primeira linha de forma automática para atualizar o sistema
+    if not primeira_linha or len(primeira_linha) != len(COLUNAS):
+        # Preserva os dados se a planilha não estiver vazia, apenas atualiza a linha 1
+        if ws.row_count == 0:
+            ws.append_row(COLUNAS)
+        else:
+            # Atualiza os cabeçalhos da primeira linha sem apagar o resto
+            for i, coluna in enumerate(COLUNAS, start=1):
+                ws.update_cell(1, i, coluna)
     return ws
 
 def load_data():
