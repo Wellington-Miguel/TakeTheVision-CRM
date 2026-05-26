@@ -12,6 +12,18 @@ st.set_page_config(
     layout="wide",
 )
 
+# Padding lateral — ocupa bem a tela sem perder legibilidade
+st.markdown("""
+    <style>
+        .block-container {
+            max-width: 1200px;
+            padding-left: 3rem;
+            padding-right: 3rem;
+            margin: auto;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # ── SISTEMA DE AUTENTICAÇÃO (LOGIN) ──────────────────────────────────────────
 def check_password():
     """Retorna True se o utilizador inseriu as credenciais corretas."""
