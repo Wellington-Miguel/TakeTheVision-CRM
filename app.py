@@ -49,29 +49,6 @@ def check_password():
 
 # O resto do sistema só roda se passar na barreira do login
 if check_password():
-
-    # ── CSS (Identidade Visual Preservada) ─────────────────────────────────────
-    st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
-    
-    html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; background: #000 !important; }
-    .stApp { background: #000 !important; }
-    
-    .hero-wrap { text-align: center; padding: 2rem 1rem 1rem; }
-    .hero-title {
-        font-family: 'Bebas Neue', sans-serif;
-        font-size: clamp(3rem, 8vw, 5.5rem);
-        color: #f5f0ea; letter-spacing: 0.04em; line-height: 0.9; margin: 0;
-    }
-    
-    /* Customização Clean para Inputs e Botões */
-    div[data-baseweb="input"] { background-color: #111 !important; border: 1px solid #222 !important; border-radius: 4px !important; }
-    input { color: #f5f0ea !important; }
-    div[data-testid="stForm"] { border: 1px solid #1c1c1c !important; background-color: #050505 !important; padding: 2rem !important; }
-    </style>
-    """, unsafe_allow_html=True)
-
     # Botão Discreto de Logout no Topo
     col_space, col_logout = st.columns([4, 1])
     with col_logout:
@@ -143,9 +120,9 @@ if check_password():
         return bool(re.match(r"^[^@]+@[^@]+\.[^@]+$", e))
 
     # ── CABEÇALHO DO PAINEL ────────────────────────────────────────────────────
-    st.markdown('<div class="hero-wrap"><h1 class="hero-title">TAKE THE VISION</h1></div>', unsafe_allow_html=True)
-    st.caption("<center>Painel de Gestão Seguro Autenticado</center>", unsafe_allow_html=True)
-    st.write("")
+    st.title("👁 TAKE THE VISION")
+    st.subheader("Gestão de Clientes")
+    st.caption("Painel Autenticado de Forma Segura")
 
     # ── ABAS DE NAVEGAÇÃO ──────────────────────────────────────────────────────
     tab1, tab2 = st.tabs(["Novo Cadastro", "Lista de Clientes"])
