@@ -66,10 +66,10 @@ if check_password():
         "https://www.googleapis.com/auth/drive",
     ]
 
-    # Estrutura oficial de colunas (27 campos)
+    # Estrutura oficial de colunas (28 campos)
     COLUNAS = [
         "id", "nome", "genero", "cpf", "telefone", "email", "nascimento",
-        "estado", "cidade",
+        "rua", "estado", "cidade",
         "esf_od", "esf_oe", "cil_od", "cil_oe", "eixo_od", "eixo_oe",
         "dnp_od", "dnp_oe", "co_od", "co_oe", "adicao", "tipo_lente",
         "tipo_produto", "data_compra", "valor_compra",
@@ -158,11 +158,21 @@ if check_password():
             with c_gen:
                 genero = st.selectbox(
                     "Gênero",
-                    options=["", "Masculino", "Feminino", "Outro", "Prefiro não informar"]
+                    options=[
+                        "",
+                        "Homem Cisgênero",
+                        "Mulher Cisgênero",
+                        "Homem Transgênero",
+                        "Mulher Transgênero",
+                        "Não-Binário",
+                        "Bigênero",
+                    ]
                 )
 
-            # ── LOCALIZAÇÃO (ESTADO / CIDADE) ─────────────────
+            # ── LOCALIZAÇÃO (RUA / CIDADE / ESTADO) ──────────
             st.write("### Localização")
+            rua = st.text_input("Rua / Endereço", placeholder="Ex.: Rua das Flores, 123, Bairro")
+
             c_est, c_cid = st.columns(2)
             with c_est:
                 estado = st.selectbox("Estado (UF)", options=ESTADOS_BR)
@@ -247,6 +257,7 @@ if check_password():
                             "telefone":     format_phone(tel) if tel else "",
                             "email":        email.strip(),
                             "nascimento":   nasc.strftime("%d/%m/%Y") if nasc else "",
+                            "rua":          rua.strip(),
                             "estado":       estado,
                             "cidade":       cidade.strip(),
                             "esf_od":       esf_od,     "esf_oe":  esf_oe,
@@ -299,6 +310,7 @@ if check_password():
                 "telefone":     "Telefone",
                 "email":        "E-mail",
                 "nascimento":   "Nascimento",
+                "rua":          "Rua / Endereço",
                 "estado":       "Estado",
                 "cidade":       "Cidade",
                 "esf_od":       "Esf. OD",   "esf_oe":  "Esf. OE",
@@ -336,7 +348,7 @@ if check_password():
                 st.dataframe(
                     df[[
                         "Nome", "Gênero", "CPF", "Telefone", "E-mail", "Nascimento",
-                        "Estado", "Cidade",
+                        "Rua / Endereço", "Estado", "Cidade",
                         "Esf. OD", "Esf. OE", "Cil. OD", "Eixo OD", "Cil. OE", "Eixo OE",
                         "DNP OD", "DNP OE", "CO OD", "CO OE", "Adição", "Lente",
                         "Produto", "Data Compra", "Valor (R$)",
