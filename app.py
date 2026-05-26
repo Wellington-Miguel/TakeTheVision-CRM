@@ -5,7 +5,7 @@ from google.oauth2.service_account import Credentials
 import re
 from datetime import date, datetime
 
-# Configuração da página limpa e profissional
+# ── CONFIGURAÇÃO DA PÁGINA ───────────────────────────────────────────────────
 st.set_page_config(
     page_title="Take The Vision",
     page_icon="👁",
@@ -14,9 +14,9 @@ st.set_page_config(
 
 # ── SISTEMA DE AUTENTICAÇÃO (LOGIN) ──────────────────────────────────────────
 def check_password():
-    """Retorna True se o usuário inseriu as credenciais corretas."""
+    """Retorna True se o utilizador inseriu as credenciais corretas."""
     def password_entered():
-        """Verifica se as credenciais digitadas batem com o secrets."""
+        """Verifica se as credenciais digitadas coincidem com o secrets."""
         if (
             st.session_state["username"] == st.secrets["credentials"]["username"]
             and st.session_state["password"] == st.secrets["credentials"]["password"]
@@ -28,78 +28,104 @@ def check_password():
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        st.title("👁 TAKE THE VISION")
+        # Tela de Login Inicial
+        st.markdown('<div class="hero-wrap"><h1 class="hero-title">TAKE THE VISION</h1></div>', unsafe_allow_html=True)
         st.subheader("Acesso Restrito")
-        st.text_input("Usuário", key="username")
+        st.text_input("Utilizador", key="username")
         st.text_input("Senha", type="password", key="password")
         st.button("Entrar", on_click=password_entered)
         return False
     elif not st.session_state["password_correct"]:
-        st.title("👁 TAKE THE VISION")
+        # Login incorreto
+        st.markdown('<div class="hero-wrap"><h1 class="hero-title">TAKE THE VISION</h1></div>', unsafe_allow_html=True)
         st.subheader("Acesso Restrito")
-        st.text_input("Usuário", key="username")
+        st.text_input("Utilizador", key="username")
         st.text_input("Senha", type="password", key="password")
         st.button("Entrar", on_click=password_entered)
-        st.error("❌ Usuário ou senha incorretos.")
+        st.error("❌ Utilizador ou senha incorretos.")
         return False
     else:
         return True
 
-# Se a verificação falhar, o script para aqui e não carrega o resto do app
+# O resto do sistema só roda se passar na barreira do login
 if check_password():
 
-    # ── Botão de Logout no topo da página de forma discreta ───────────────────
+    # ── CSS (Identidade Visual Preservada) ─────────────────────────────────────
+    st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
+    
+    html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; background: #000 !important; }
+    .stApp { background: #000 !important; }
+    
+    .hero-wrap { text-align: center; padding: 2rem 1rem 1rem; }
+    .hero-title {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: clamp(3rem, 8vw, 5.5rem);
+        color: #f5f0ea; letter-spacing: 0.04em; line-height: 0.9; margin: 0;
+    }
+    
+    /* Customização Clean para Inputs e Botões */
+    div[data-baseweb="input"] { background-color: #111 !important; border: 1px solid #222 !important; border-radius: 4px !important; }
+    input { color: #f5f0ea !important; }
+    div[data-testid="stForm"] { border: 1px solid #1c1c1c !important; background-color: #050505 !important; padding: 2rem !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Botão Discreto de Logout no Topo
     col_space, col_logout = st.columns([4, 1])
     with col_logout:
         if st.button("Sair (Logout)", use_container_width=True):
             del st.session_state["password_correct"]
             st.rerun()
 
-    # ── Google Sheets Connection ───────────────────────────────────────────────
+    # ── GOOGLE SHEETS CONNECTION ───────────────────────────────────────────────
     SCOPES = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive",
     ]
 
+    # Estrutura oficial de colunas (20 campos)
     COLUNAS = [
         "id", "nome", "cpf", "telefone", "email", "nascimento", "endereco",
         "esf_od", "esf_oe", "cil_od", "cil_oe", "eixo_od", "eixo_oe", 
         "dnp_od", "dnp_oe", "co_od", "co_oe", "adicao", "tipo_lente", "criado_em"
     ]
 
-@st.cache_resource(ttl=300)
-def get_sheet():
-    """Retorna a worksheet do Google Sheets usando cache de 5 min."""
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=SCOPES,
-    )
-    client = gspread.authorize(creds)
-    spreadsheet = client.open(st.secrets["google_sheets"]["sheet_name"])
-    ws = spreadsheet.sheet1
+    @st.cache_resource(ttl=300)
+    def get_sheet():
+        creds = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],
+            scopes=SCOPES,
+        )
+        client = gspread.authorize(creds)
+        spreadsheet = client.open(st.secrets["google_sheets"]["sheet_name"])
+        ws = spreadsheet.sheet1
+        
+        # Validação inteligente de cabeçalhos
+        primeira_linha = ws.row_values(1) if ws.row_count > 0 else []
+        if not primeira_linha or len(primeira_linha) != len(COLUNAS):
+            if ws.row_count == 0:
+                ws.append_row(COLUNAS)
+            else:
+                for i, col in enumerate(COLUNAS, start=1):
+                    ws.update_cell(1, i, col)
+        return ws
 
-    # Garante cabeçalho atualizado se a planilha estiver vazia ou desatualizada
-    if ws.row_count == 0 or ws.cell(1, 1).value != "id":
-        ws.clear()
-        ws.append_row(COLUNAS)
-    return ws
-
-    # FUNÇÃO ATUALIZADA: Blindada contra cabeçalhos fantasmas ou vazios no Sheets
     def load_data():
         try:
             ws = get_sheet()
-            # Força o gspread a usar estritamente a nossa lista COLUNAS como chaves.
-            # Isso ignora qualquer coluna em branco à direita que gerava o erro.
+            # O expected_headers força a sincronização correta com as variáveis
             return ws.get_all_records(expected_headers=COLUNAS)
         except Exception as e:
-            st.error(f"Erro ao carregar dados: {e}")
+            st.error(f"Erro ao carregar dados da planilha: {e}")
             return []
 
     def save_row(row: dict):
         ws = get_sheet()
         ws.append_row([row.get(c, "") for c in COLUNAS])
 
-    # ── Helpers de Validação e Formatação ──────────────────────────────────────
+    # ── HELPERS DE VALIDAÇÃO E FORMATAÇÃO ──────────────────────────────────────
     def format_cpf(cpf):
         d = re.sub(r"\D", "", cpf)
         return f"{d[:3]}.{d[3:6]}.{d[6:9]}-{d[9:]}" if len(d) == 11 else cpf
@@ -116,12 +142,12 @@ def get_sheet():
     def valid_email(e):   
         return bool(re.match(r"^[^@]+@[^@]+\.[^@]+$", e))
 
-    # ── Cabeçalho Clean ────────────────────────────────────────────────────────
-    st.title("👁 TAKE THE VISION")
-    st.subheader("Gestão de Clientes")
-    st.caption("Painel Autenticado de Forma Segura")
+    # ── CABEÇALHO DO PAINEL ────────────────────────────────────────────────────
+    st.markdown('<div class="hero-wrap"><h1 class="hero-title">TAKE THE VISION</h1></div>', unsafe_allow_html=True)
+    st.caption("<center>Painel de Gestão Seguro Autenticado</center>", unsafe_allow_html=True)
+    st.write("")
 
-    # ── Abas de Navegação ──────────────────────────────────────────────────────
+    # ── ABAS DE NAVEGAÇÃO ──────────────────────────────────────────────────────
     tab1, tab2 = st.tabs(["Novo Cadastro", "Lista de Clientes"])
 
     # ══════════════════════════════════════════════════════════
@@ -145,26 +171,33 @@ def get_sheet():
             end = st.text_input("Endereço", placeholder="Rua, nº, bairro, cidade – UF")
 
             st.write("### Receita Oftalmológica (Dioptria)")
+            
+            # Graus Esféricos
             c5, c6 = st.columns(2)
             with c5: esf_od = st.number_input("Esférico OD", min_value=-30.0, max_value=30.0, step=0.25, format="%.2f")
             with c6: esf_oe = st.number_input("Esférico OE", min_value=-30.0, max_value=30.0, step=0.25, format="%.2f")
 
+            # Cilíndrico e Eixo lado a lado (Olho Direito)
             c_cil_od, c_eixo_od = st.columns(2)
             with c_cil_od: cil_od = st.number_input("Cilíndrico OD", min_value=-10.0, max_value=10.0, step=0.25, format="%.2f")
             with c_eixo_od: eixo_od = st.number_input("Eixo OD (°)", min_value=0, max_value=180, step=1, value=0)
 
+            # Cilíndrico e Eixo lado a lado (Olho Esquerdo)
             c_cil_oe, c_eixo_oe = st.columns(2)
             with c_cil_oe: cil_oe = st.number_input("Cilíndrico OE", min_value=-10.0, max_value=10.0, step=0.25, format="%.2f")
             with c_eixo_oe: eixo_oe = st.number_input("Eixo OE (°)", min_value=0, max_value=180, step=1, value=0)
 
+            # Distância Nasopupilar (DNP)
             c_dnp_od, c_dnp_oe = st.columns(2)
-            with c_dnp_od: dnp_od = st.number_input("DNP OD (mm)", min_value=0.0, max_value=50.0, step=0.5, format="%.1f")
-            with c_dnp_oe: dnp_oe = st.number_input("DNP OE (mm)", min_value=0.0, max_value=50.0, step=0.5, format="%.1f")
+            with c_dnp_od: dnp_od = st.number_input("DNP OD (mm)", min_value=0.0, max_value=50.0, step=0.5, format="%.1f", help="Distância Nasopupilar - Olho Direito")
+            with c_dnp_oe: dnp_oe = st.number_input("DNP OE (mm)", min_value=0.0, max_value=50.0, step=0.5, format="%.1f", help="Distância Nasopupilar - Olho Esquerdo")
 
+            # Centro Óptico (CO)
             c_co_od, c_co_oe = st.columns(2)
-            with c_co_od: co_od = st.number_input("CO OD (mm)", min_value=0.0, max_value=50.0, step=0.5, format="%.1f")
-            with c_co_oe: co_oe = st.number_input("CO OE (mm)", min_value=0.0, max_value=50.0, step=0.5, format="%.1f")
+            with c_co_od: co_od = st.number_input("CO OD (mm)", min_value=0.0, max_value=50.0, step=0.5, format="%.1f", help="Centro Óptico - Olho Direito")
+            with c_co_oe: co_oe = st.number_input("CO OE (mm)", min_value=0.0, max_value=50.0, step=0.5, format="%.1f", help="Centro Óptico - Olho Esquerdo")
 
+            # Adição e Tipo de Lente (Campo de Texto)
             c9, c10 = st.columns(2)
             with c9: adicao = st.number_input("Adição", min_value=0.0, max_value=4.0, step=0.25, format="%.2f")
             with c10: lente = st.text_input("Tipo de Lente", placeholder="Ex.: Policarbonato Antirreflexo")
@@ -180,7 +213,7 @@ def get_sheet():
             if errs:
                 for e in errs: st.error(e)
             else:
-                with st.spinner("Salvando dados..."):
+                with st.spinner("A guardar dados..."):
                     try:
                         reg = {
                             "id":         datetime.now().strftime("%Y%m%d%H%M%S"),
@@ -216,7 +249,7 @@ def get_sheet():
                 st.rerun()
 
         data = load_data()
-        busca_nome = st.text_input("🔍 Buscar cliente por nome", placeholder="Digite o nome completo ou parte dele...")
+        busca = st.text_input("🔍 Buscar cliente por nome ou CPF", placeholder="Digite para filtrar...")
         
         if not data:
             st.info("Nenhum cliente cadastrado na base de dados geral.")
@@ -230,15 +263,20 @@ def get_sheet():
                 "adicao": "Adição", "tipo_lente": "Lente", "criado_em": "Cadastrado em",
             })
             
-            if busca_nome:
-                df = df[df["Nome"].str.contains(busca_nome, case=False, na=False)]
+            if busca:
+                df = df[
+                    df["Nome"].str.contains(busca, case=False, na=False) |
+                    df["CPF"].str.contains(busca, case=False, na=False)
+                ]
                 
             df = df.sort_values(by="Nome")
             
             if df.empty:
-                st.warning(f"Nenhum cliente encontrado com o nome '{busca_nome}'.")
+                st.warning(f"Nenhum cliente encontrado para a busca: '{busca}'.")
             else:
                 st.caption(f"Exibindo {len(df)} cliente(s)")
+                
+                # Exibição estruturada da tabela com as novas colunas
                 st.dataframe(
                     df[["Nome", "CPF", "Telefone", "E-mail", "Nascimento",
                         "Esf. OD", "Esf. OE", "Cil. OD", "Eixo OD", "Cil. OE", "Eixo OE", 
@@ -246,6 +284,7 @@ def get_sheet():
                     use_container_width=True, 
                     hide_index=True,
                 )
+                
                 st.download_button(
                     "⬇ Exportar Planilha (CSV)",
                     df.to_csv(index=False).encode("utf-8"),
