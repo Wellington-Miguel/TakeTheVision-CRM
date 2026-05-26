@@ -29,7 +29,7 @@ def check_password():
     if "password_correct" not in st.session_state:
         st.markdown('<div class="hero-wrap"><h1 class="hero-title">TAKE THE VISION</h1></div>', unsafe_allow_html=True)
         st.subheader("Acesso Restrito")
-        st.text_input("Utilizador", key="username")
+        st.text_input("Usuário", key="username")
         st.text_input("Senha", type="password", key="password")
         st.button("Entrar", on_click=password_entered)
         return False
@@ -39,7 +39,7 @@ def check_password():
         st.text_input("Utilizador", key="username")
         st.text_input("Senha", type="password", key="password")
         st.button("Entrar", on_click=password_entered)
-        st.error("❌ Utilizador ou senha incorretos.")
+        st.error("❌ Usuário ou senha incorretos.")
         return False
     else:
         return True
@@ -56,7 +56,7 @@ if check_password():
     # Botão Discreto de Logout no Topo
     col_space, col_logout = st.columns([4, 1])
     with col_logout:
-        if st.button("Sair (Logout)", use_container_width=True):
+        if st.button("Sair", use_container_width=True):
             del st.session_state["password_correct"]
             st.rerun()
 
