@@ -292,13 +292,33 @@ if check_password():
         data = load_data()
 
         # ── FILTROS ───────────────────────────────────────────
-        col_b, col_f1, col_f2 = st.columns([3, 1, 1])
-        with col_b:
-            busca = st.text_input("🔍 Buscar por nome, CPF ou cidade", placeholder="Digite para filtrar...")
+        busca = st.text_input("🔍 Buscar por nome, CPF ou cidade", placeholder="Digite para filtrar...")
+
+        col_f1, col_f2, col_f3 = st.columns(3)
         with col_f1:
-            filtro_produto = st.selectbox("Produto", options=["Todos", "Grau", "Solar"])
+            filtro_produto = st.selectbox("Tipo de Produto", options=["Todos", "Grau", "Solar"])
         with col_f2:
-            filtro_genero = st.selectbox("Gênero", options=["Todos", "Masculino", "Feminino", "Outro", "Prefiro não informar"])
+            filtro_genero = st.selectbox("Gênero", options=[
+                "Todos", "Homem Cisgênero", "Mulher Cisgênero",
+                "Homem Transgênero", "Mulher Transgênero",
+                "Não-Binário", "Bigênero"
+            ])
+        with col_f3:
+            filtro_estado = st.selectbox("Estado (UF)", options=["Todos"] + [e for e in ESTADOS_BR if e])
+
+        col_f4, col_f5 = st.columns(2)
+        with col_f4:
+            filtro_data_ini = st.date_input(
+                "Data da Compra — De", value=None,
+                min_value=date(2000, 1, 1), max_value=date.today(),
+                format="DD/MM/YYYY",
+            )
+        with col_f5:
+            filtro_data_fim = st.date_input(
+                "Data da Compra — Até", value=None,
+                min_value=date(2000, 1, 1), max_value=date.today(),
+                format="DD/MM/YYYY",
+            )
 
         if not data:
             st.info("Nenhum cliente cadastrado na base de dados.")
@@ -337,6 +357,20 @@ if check_password():
                 df = df[df["Produto"].str.contains(filtro_produto, case=False, na=False)]
             if filtro_genero != "Todos":
                 df = df[df["Gênero"].str.contains(filtro_genero, case=False, na=False)]
+            if filtro_estado != "Todos":
+                df = df[df["Estado"] == filtro_estado]
+            if filtro_data_ini or filtro_data_fim:
+                def parse_date(s):
+                    try:
+                        return datetime.strptime(str(s), "%d/%m/%Y").date()
+                    except Exception:
+                        return None
+                df["_data_compra_dt"] = df["Data Compra"].apply(parse_date)
+                if filtro_data_ini:
+                    df = df[df["_data_compra_dt"].apply(lambda d: d >= filtro_data_ini if d else False)]
+                if filtro_data_fim:
+                    df = df[df["_data_compra_dt"].apply(lambda d: d <= filtro_data_fim if d else False)]
+                df = df.drop(columns=["_data_compra_dt"])
 
             df = df.sort_values(by="Nome")
 
