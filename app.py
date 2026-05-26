@@ -9,7 +9,7 @@ from datetime import date, datetime
 st.set_page_config(
     page_title="Take The Vision",
     page_icon="👁",
-    layout="centered",
+    layout="wide",
 )
 
 # ── SISTEMA DE AUTENTICAÇÃO (LOGIN) ──────────────────────────────────────────
@@ -282,7 +282,7 @@ if check_password():
     # TAB 2 — LISTA DE CLIENTES CADASTRADOS
     # ══════════════════════════════════════════════════════════
     with tab2:
-        col_title, col_refresh = st.columns([4, 1])
+        col_title, col_refresh = st.columns([6, 1])
         with col_title: st.write("### Consultar Clientes")
         with col_refresh:
             if st.button("↺ Atualizar", use_container_width=True):
@@ -365,36 +365,94 @@ if check_password():
                         return datetime.strptime(str(s), "%d/%m/%Y").date()
                     except Exception:
                         return None
-                df["_data_compra_dt"] = df["Data Compra"].apply(parse_date)
+                df["_dt"] = df["Data Compra"].apply(parse_date)
                 if filtro_data_ini:
-                    df = df[df["_data_compra_dt"].apply(lambda d: d >= filtro_data_ini if d else False)]
+                    df = df[df["_dt"].apply(lambda d: d >= filtro_data_ini if d else False)]
                 if filtro_data_fim:
-                    df = df[df["_data_compra_dt"].apply(lambda d: d <= filtro_data_fim if d else False)]
-                df = df.drop(columns=["_data_compra_dt"])
+                    df = df[df["_dt"].apply(lambda d: d <= filtro_data_fim if d else False)]
+                df = df.drop(columns=["_dt"])
 
             df = df.sort_values(by="Nome")
 
             if df.empty:
                 st.warning("Nenhum cliente encontrado com os filtros aplicados.")
             else:
-                st.caption(f"Exibindo {len(df)} cliente(s)")
+                # ── MÉTRICAS RÁPIDAS ──────────────────────────────
+                total = len(df)
+                try:
+                    valor_total = df["Valor (R$)"].apply(
+                        lambda x: float(str(x).replace(",", ".")) if x not in ("", None) else 0.0
+                    ).sum()
+                    ticket_medio = valor_total / total if total > 0 else 0.0
+                except Exception:
+                    valor_total = ticket_medio = 0.0
 
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("Total de clientes", total)
+                m2.metric("Faturamento filtrado", f"R$ {valor_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                m3.metric("Ticket médio", f"R$ {ticket_medio:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                grau_count = df[df["Produto"].str.lower() == "grau"].shape[0]
+                solar_count = df[df["Produto"].str.lower() == "solar"].shape[0]
+                m4.metric("Grau / Solar", f"{grau_count} / {solar_count}")
+
+                st.divider()
+                st.caption(f"Exibindo {total} cliente(s)")
+
+                # ── TABELA PRINCIPAL ──────────────────────────────
+                # Separar em dois grupos de colunas para melhor legibilidade
+                st.write("**Dados Pessoais & Compra**")
                 st.dataframe(
+                    df[[
+                        "Nome", "Gênero", "CPF", "Telefone", "E-mail",
+                        "Nascimento", "Estado", "Cidade",
+                        "Produto", "Data Compra", "Valor (R$)", "Cadastrado em"
+                    ]],
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Nome":          st.column_config.TextColumn(width="medium"),
+                        "Gênero":        st.column_config.TextColumn(width="medium"),
+                        "CPF":           st.column_config.TextColumn(width="small"),
+                        "Telefone":      st.column_config.TextColumn(width="small"),
+                        "E-mail":        st.column_config.TextColumn(width="medium"),
+                        "Nascimento":    st.column_config.TextColumn(width="small"),
+                        "Estado":        st.column_config.TextColumn(width="small"),
+                        "Cidade":        st.column_config.TextColumn(width="small"),
+                        "Produto":       st.column_config.TextColumn(width="small"),
+                        "Data Compra":   st.column_config.TextColumn(width="small"),
+                        "Valor (R$)":    st.column_config.TextColumn(width="small"),
+                        "Cadastrado em": st.column_config.TextColumn(width="small"),
+                    },
+                )
+
+                st.write("**Receita Oftalmológica**")
+                st.dataframe(
+                    df[[
+                        "Nome",
+                        "Esf. OD", "Esf. OE",
+                        "Cil. OD", "Eixo OD",
+                        "Cil. OE", "Eixo OE",
+                        "DNP OD", "DNP OE",
+                        "CO OD",  "CO OE",
+                        "Adição", "Lente",
+                    ]],
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Nome": st.column_config.TextColumn(width="medium"),
+                    },
+                )
+
+                st.divider()
+                st.download_button(
+                    "⬇ Exportar Planilha Completa (CSV)",
                     df[[
                         "Nome", "Gênero", "CPF", "Telefone", "E-mail", "Nascimento",
                         "Rua / Endereço", "Estado", "Cidade",
                         "Esf. OD", "Esf. OE", "Cil. OD", "Eixo OD", "Cil. OE", "Eixo OE",
                         "DNP OD", "DNP OE", "CO OD", "CO OE", "Adição", "Lente",
-                        "Produto", "Data Compra", "Valor (R$)",
-                        "Cadastrado em"
-                    ]],
-                    use_container_width=True,
-                    hide_index=True,
-                )
-
-                st.download_button(
-                    "⬇ Exportar Planilha (CSV)",
-                    df.to_csv(index=False).encode("utf-8"),
+                        "Produto", "Data Compra", "Valor (R$)", "Cadastrado em"
+                    ]].to_csv(index=False).encode("utf-8"),
                     "clientes_take_the_vision.csv",
                     "text/csv",
                 )
