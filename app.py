@@ -28,7 +28,6 @@ def check_password():
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        # Primeira vez executando, mostra os campos de login
         st.title("👁 TAKE THE VISION")
         st.subheader("Acesso Restrito")
         st.text_input("Usuário", key="username")
@@ -36,7 +35,6 @@ def check_password():
         st.button("Entrar", on_click=password_entered)
         return False
     elif not st.session_state["password_correct"]:
-        # Inseriu credenciais erradas, mostra erro e os campos de novo
         st.title("👁 TAKE THE VISION")
         st.subheader("Acesso Restrito")
         st.text_input("Usuário", key="username")
@@ -45,7 +43,6 @@ def check_password():
         st.error("❌ Usuário ou senha incorretos.")
         return False
     else:
-        # Password correto
         return True
 
 # Se a verificação falhar, o script para aqui e não carrega o resto do app
@@ -84,10 +81,13 @@ if check_password():
             ws.append_row(COLUNAS)
         return ws
 
+    # FUNÇÃO ATUALIZADA: Blindada contra cabeçalhos fantasmas ou vazios no Sheets
     def load_data():
         try:
             ws = get_sheet()
-            return ws.get_all_records()
+            # Força o gspread a usar estritamente a nossa lista COLUNAS como chaves.
+            # Isso ignora qualquer coluna em branco à direita que gerava o erro.
+            return ws.get_all_records(expected_headers=COLUNAS)
         except Exception as e:
             st.error(f"Erro ao carregar dados: {e}")
             return []
