@@ -16,19 +16,17 @@ st.set_page_config(
 def check_password():
     """Retorna True se o utilizador inseriu as credenciais corretas."""
     def password_entered():
-        """Verifica se as credenciais digitadas coincidem com o secrets."""
         if (
             st.session_state["username"] == st.secrets["credentials"]["username"]
             and st.session_state["password"] == st.secrets["credentials"]["password"]
         ):
             st.session_state["password_correct"] = True
-            del st.session_state["password"]  # Remove a senha da memória por segurança
+            del st.session_state["password"]
             del st.session_state["username"]
         else:
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        # Tela de Login Inicial
         st.markdown('<div class="hero-wrap"><h1 class="hero-title">TAKE THE VISION</h1></div>', unsafe_allow_html=True)
         st.subheader("Acesso Restrito")
         st.text_input("Utilizador", key="username")
@@ -36,7 +34,6 @@ def check_password():
         st.button("Entrar", on_click=password_entered)
         return False
     elif not st.session_state["password_correct"]:
-        # Login incorreto
         st.markdown('<div class="hero-wrap"><h1 class="hero-title">TAKE THE VISION</h1></div>', unsafe_allow_html=True)
         st.subheader("Acesso Restrito")
         st.text_input("Utilizador", key="username")
@@ -46,6 +43,13 @@ def check_password():
         return False
     else:
         return True
+
+# ── LISTA DE ESTADOS BRASILEIROS ─────────────────────────────────────────────
+ESTADOS_BR = [
+    "", "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO",
+    "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ",
+    "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"
+]
 
 # O resto do sistema só roda se passar na barreira do login
 if check_password():
@@ -62,11 +66,14 @@ if check_password():
         "https://www.googleapis.com/auth/drive",
     ]
 
-    # Estrutura oficial de colunas (20 campos)
+    # Estrutura oficial de colunas (27 campos)
     COLUNAS = [
-        "id", "nome", "cpf", "telefone", "email", "nascimento", "endereco",
-        "esf_od", "esf_oe", "cil_od", "cil_oe", "eixo_od", "eixo_oe", 
-        "dnp_od", "dnp_oe", "co_od", "co_oe", "adicao", "tipo_lente", "criado_em"
+        "id", "nome", "genero", "cpf", "telefone", "email", "nascimento",
+        "estado", "cidade",
+        "esf_od", "esf_oe", "cil_od", "cil_oe", "eixo_od", "eixo_oe",
+        "dnp_od", "dnp_oe", "co_od", "co_oe", "adicao", "tipo_lente",
+        "tipo_produto", "data_compra", "valor_compra",
+        "criado_em"
     ]
 
     @st.cache_resource(ttl=300)
@@ -78,8 +85,7 @@ if check_password():
         client = gspread.authorize(creds)
         spreadsheet = client.open(st.secrets["google_sheets"]["sheet_name"])
         ws = spreadsheet.sheet1
-        
-        # Validação inteligente de cabeçalhos
+
         primeira_linha = ws.row_values(1) if ws.row_count > 0 else []
         if not primeira_linha or len(primeira_linha) != len(COLUNAS):
             if ws.row_count == 0:
@@ -92,7 +98,6 @@ if check_password():
     def load_data():
         try:
             ws = get_sheet()
-            # O expected_headers força a sincronização correta com as variáveis
             return ws.get_all_records(expected_headers=COLUNAS)
         except Exception as e:
             st.error(f"Erro ao carregar dados da planilha: {e}")
@@ -113,10 +118,10 @@ if check_password():
         if len(d) == 10: return f"({d[:2]}) {d[2:6]}-{d[6:]}"
         return p
 
-    def valid_cpf(cpf):   
+    def valid_cpf(cpf):
         return len(re.sub(r"\D", "", cpf)) == 11
 
-    def valid_email(e):   
+    def valid_email(e):
         return bool(re.match(r"^[^@]+@[^@]+\.[^@]+$", e))
 
     # ── CABEÇALHO DO PAINEL ────────────────────────────────────────────────────
@@ -132,6 +137,8 @@ if check_password():
     # ══════════════════════════════════════════════════════════
     with tab1:
         with st.form("form_cadastro", clear_on_submit=True):
+
+            # ── DADOS PESSOAIS ────────────────────────────────
             st.write("### Dados Pessoais")
             nome = st.text_input("Nome completo", placeholder="Ex.: Maria da Silva")
 
@@ -141,43 +148,81 @@ if check_password():
 
             c3, c4 = st.columns(2)
             with c3: email = st.text_input("E-mail", placeholder="cliente@email.com")
-            with c4: nasc = st.date_input("Data de Nascimento", value=None,
-                                         min_value=date(1920, 1, 1), max_value=date.today(),
-                                         format="DD/MM/YYYY")
+            with c4: nasc = st.date_input(
+                "Data de Nascimento", value=None,
+                min_value=date(1920, 1, 1), max_value=date.today(),
+                format="DD/MM/YYYY"
+            )
 
-            end = st.text_input("Endereço", placeholder="Rua, nº, bairro, cidade – UF")
+            c_gen, _ = st.columns(2)
+            with c_gen:
+                genero = st.selectbox(
+                    "Gênero",
+                    options=["", "Masculino", "Feminino", "Outro", "Prefiro não informar"]
+                )
 
+            # ── LOCALIZAÇÃO (ESTADO / CIDADE) ─────────────────
+            st.write("### Localização")
+            c_est, c_cid = st.columns(2)
+            with c_est:
+                estado = st.selectbox("Estado (UF)", options=ESTADOS_BR)
+            with c_cid:
+                cidade = st.text_input("Cidade", placeholder="Ex.: Salvador")
+
+            # ── RECEITA OFTALMOLÓGICA ─────────────────────────
             st.write("### Receita Oftalmológica (Dioptria)")
-            
-            # Graus Esféricos
+
             c5, c6 = st.columns(2)
             with c5: esf_od = st.number_input("Esférico OD", min_value=-30.0, max_value=30.0, step=0.25, format="%.2f")
             with c6: esf_oe = st.number_input("Esférico OE", min_value=-30.0, max_value=30.0, step=0.25, format="%.2f")
 
-            # Cilíndrico e Eixo lado a lado (Olho Direito)
             c_cil_od, c_eixo_od = st.columns(2)
             with c_cil_od: cil_od = st.number_input("Cilíndrico OD", min_value=-10.0, max_value=10.0, step=0.25, format="%.2f")
             with c_eixo_od: eixo_od = st.number_input("Eixo OD (°)", min_value=0, max_value=180, step=1, value=0)
 
-            # Cilíndrico e Eixo lado a lado (Olho Esquerdo)
             c_cil_oe, c_eixo_oe = st.columns(2)
             with c_cil_oe: cil_oe = st.number_input("Cilíndrico OE", min_value=-10.0, max_value=10.0, step=0.25, format="%.2f")
             with c_eixo_oe: eixo_oe = st.number_input("Eixo OE (°)", min_value=0, max_value=180, step=1, value=0)
 
-            # Distância Nasopupilar (DNP)
             c_dnp_od, c_dnp_oe = st.columns(2)
             with c_dnp_od: dnp_od = st.number_input("DNP OD (mm)", min_value=0.0, max_value=50.0, step=0.5, format="%.1f", help="Distância Nasopupilar - Olho Direito")
             with c_dnp_oe: dnp_oe = st.number_input("DNP OE (mm)", min_value=0.0, max_value=50.0, step=0.5, format="%.1f", help="Distância Nasopupilar - Olho Esquerdo")
 
-            # Centro Óptico (CO)
             c_co_od, c_co_oe = st.columns(2)
             with c_co_od: co_od = st.number_input("CO OD (mm)", min_value=0.0, max_value=50.0, step=0.5, format="%.1f", help="Centro Óptico - Olho Direito")
             with c_co_oe: co_oe = st.number_input("CO OE (mm)", min_value=0.0, max_value=50.0, step=0.5, format="%.1f", help="Centro Óptico - Olho Esquerdo")
 
-            # Adição e Tipo de Lente (Campo de Texto)
             c9, c10 = st.columns(2)
             with c9: adicao = st.number_input("Adição", min_value=0.0, max_value=4.0, step=0.25, format="%.2f")
             with c10: lente = st.text_input("Tipo de Lente", placeholder="Ex.: Policarbonato Antirreflexo")
+
+            # ── DADOS DA COMPRA ───────────────────────────────
+            st.write("### Dados da Compra")
+
+            c_tp, c_dc = st.columns(2)
+            with c_tp:
+                tipo_produto = st.selectbox(
+                    "Tipo de Produto",
+                    options=["", "Grau", "Solar"]
+                )
+            with c_dc:
+                data_compra = st.date_input(
+                    "Data da Compra",
+                    value=date.today(),
+                    min_value=date(2000, 1, 1),
+                    max_value=date.today(),
+                    format="DD/MM/YYYY"
+                )
+
+            c_val, _ = st.columns(2)
+            with c_val:
+                valor_compra = st.number_input(
+                    "Valor da Compra (R$)",
+                    min_value=0.0,
+                    max_value=100000.0,
+                    step=0.01,
+                    format="%.2f"
+                )
 
             ok = st.form_submit_button("Salvar Cadastro")
 
@@ -186,6 +231,8 @@ if check_password():
             if not nome.strip(): errs.append("Nome é obrigatório.")
             if cpf and not valid_cpf(cpf): errs.append("CPF inválido.")
             if email and not valid_email(email): errs.append("E-mail inválido.")
+            if not estado: errs.append("Estado é obrigatório.")
+            if not cidade.strip(): errs.append("Cidade é obrigatória.")
 
             if errs:
                 for e in errs: st.error(e)
@@ -193,23 +240,29 @@ if check_password():
                 with st.spinner("A guardar dados..."):
                     try:
                         reg = {
-                            "id":         datetime.now().strftime("%Y%m%d%H%M%S"),
-                            "nome":       nome.strip(),
-                            "cpf":        format_cpf(cpf) if cpf else "",
-                            "telefone":   format_phone(tel) if tel else "",
-                            "email":      email.strip(),
-                            "nascimento": nasc.strftime("%d/%m/%Y") if nasc else "",
-                            "endereco":   end.strip(),
-                            "esf_od":     esf_od, "esf_oe": esf_oe,
-                            "cil_od":     cil_od, "cil_oe": cil_oe,
-                            "eixo_od":    int(eixo_od), "eixo_oe": int(eixo_oe),
-                            "dnp_od":     dnp_od, "dnp_oe": dnp_oe,
-                            "co_od":      co_od, "co_oe": co_oe,
-                            "adicao":     adicao, "tipo_lente": lente.strip() if lente else "",
-                            "criado_em":  datetime.now().strftime("%d/%m/%Y %H:%M"),
+                            "id":           datetime.now().strftime("%Y%m%d%H%M%S"),
+                            "nome":         nome.strip(),
+                            "genero":       genero,
+                            "cpf":          format_cpf(cpf) if cpf else "",
+                            "telefone":     format_phone(tel) if tel else "",
+                            "email":        email.strip(),
+                            "nascimento":   nasc.strftime("%d/%m/%Y") if nasc else "",
+                            "estado":       estado,
+                            "cidade":       cidade.strip(),
+                            "esf_od":       esf_od,     "esf_oe":  esf_oe,
+                            "cil_od":       cil_od,     "cil_oe":  cil_oe,
+                            "eixo_od":      int(eixo_od), "eixo_oe": int(eixo_oe),
+                            "dnp_od":       dnp_od,     "dnp_oe":  dnp_oe,
+                            "co_od":        co_od,      "co_oe":   co_oe,
+                            "adicao":       adicao,
+                            "tipo_lente":   lente.strip() if lente else "",
+                            "tipo_produto": tipo_produto,
+                            "data_compra":  data_compra.strftime("%d/%m/%Y") if data_compra else "",
+                            "valor_compra": f"{valor_compra:.2f}",
+                            "criado_em":    datetime.now().strftime("%d/%m/%Y %H:%M"),
                         }
                         save_row(reg)
-                        st.cache_resource.clear()   
+                        st.cache_resource.clear()
                         st.success(f"✓ {nome} cadastrado com sucesso!")
                     except Exception as e:
                         st.error(f"Erro ao salvar: {e}")
@@ -226,44 +279,76 @@ if check_password():
                 st.rerun()
 
         data = load_data()
-        busca = st.text_input("🔍 Buscar cliente por nome ou CPF", placeholder="Digite para filtrar...")
-        
+
+        # ── FILTROS ───────────────────────────────────────────
+        col_b, col_f1, col_f2 = st.columns([3, 1, 1])
+        with col_b:
+            busca = st.text_input("🔍 Buscar por nome, CPF ou cidade", placeholder="Digite para filtrar...")
+        with col_f1:
+            filtro_produto = st.selectbox("Produto", options=["Todos", "Grau", "Solar"])
+        with col_f2:
+            filtro_genero = st.selectbox("Gênero", options=["Todos", "Masculino", "Feminino", "Outro", "Prefiro não informar"])
+
         if not data:
-            st.info("Nenhum cliente cadastrado na base de dados geral.")
+            st.info("Nenhum cliente cadastrado na base de dados.")
         else:
             df = pd.DataFrame(data).rename(columns={
-                "nome": "Nome", "cpf": "CPF", "telefone": "Telefone", "email": "E-mail",
-                "nascimento": "Nascimento", "endereco": "Endereço",
-                "esf_od": "Esf. OD", "esf_oe": "Esf. OE", "cil_od": "Cil. OD", "cil_oe": "Cil. OE",
-                "eixo_od": "Eixo OD", "eixo_oe": "Eixo OE",
-                "dnp_od": "DNP OD", "dnp_oe": "DNP OE", "co_od": "CO OD", "co_oe": "CO OE",
-                "adicao": "Adição", "tipo_lente": "Lente", "criado_em": "Cadastrado em",
+                "nome":         "Nome",
+                "genero":       "Gênero",
+                "cpf":          "CPF",
+                "telefone":     "Telefone",
+                "email":        "E-mail",
+                "nascimento":   "Nascimento",
+                "estado":       "Estado",
+                "cidade":       "Cidade",
+                "esf_od":       "Esf. OD",   "esf_oe":  "Esf. OE",
+                "cil_od":       "Cil. OD",   "cil_oe":  "Cil. OE",
+                "eixo_od":      "Eixo OD",   "eixo_oe": "Eixo OE",
+                "dnp_od":       "DNP OD",    "dnp_oe":  "DNP OE",
+                "co_od":        "CO OD",     "co_oe":   "CO OE",
+                "adicao":       "Adição",
+                "tipo_lente":   "Lente",
+                "tipo_produto": "Produto",
+                "data_compra":  "Data Compra",
+                "valor_compra": "Valor (R$)",
+                "criado_em":    "Cadastrado em",
             })
-            
+
+            # Aplicar filtros
             if busca:
                 df = df[
                     df["Nome"].str.contains(busca, case=False, na=False) |
-                    df["CPF"].str.contains(busca, case=False, na=False)
+                    df["CPF"].str.contains(busca, case=False, na=False) |
+                    df["Cidade"].str.contains(busca, case=False, na=False)
                 ]
-                
+            if filtro_produto != "Todos":
+                df = df[df["Produto"].str.contains(filtro_produto, case=False, na=False)]
+            if filtro_genero != "Todos":
+                df = df[df["Gênero"].str.contains(filtro_genero, case=False, na=False)]
+
             df = df.sort_values(by="Nome")
-            
+
             if df.empty:
-                st.warning(f"Nenhum cliente encontrado para a busca: '{busca}'.")
+                st.warning("Nenhum cliente encontrado com os filtros aplicados.")
             else:
                 st.caption(f"Exibindo {len(df)} cliente(s)")
-                
-                # Exibição estruturada da tabela com as novas colunas
+
                 st.dataframe(
-                    df[["Nome", "CPF", "Telefone", "E-mail", "Nascimento",
-                        "Esf. OD", "Esf. OE", "Cil. OD", "Eixo OD", "Cil. OE", "Eixo OE", 
-                        "DNP OD", "DNP OE", "CO OD", "CO OE", "Adição", "Lente", "Cadastrado em"]],
-                    use_container_width=True, 
+                    df[[
+                        "Nome", "Gênero", "CPF", "Telefone", "E-mail", "Nascimento",
+                        "Estado", "Cidade",
+                        "Esf. OD", "Esf. OE", "Cil. OD", "Eixo OD", "Cil. OE", "Eixo OE",
+                        "DNP OD", "DNP OE", "CO OD", "CO OE", "Adição", "Lente",
+                        "Produto", "Data Compra", "Valor (R$)",
+                        "Cadastrado em"
+                    ]],
+                    use_container_width=True,
                     hide_index=True,
                 )
-                
+
                 st.download_button(
                     "⬇ Exportar Planilha (CSV)",
                     df.to_csv(index=False).encode("utf-8"),
-                    "clientes_take_the_vision.csv", "text/csv",
+                    "clientes_take_the_vision.csv",
+                    "text/csv",
                 )
